@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Room</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
+    <style>
+        body, html {
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .video-call-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .video-section {
+            flex: 1;
+            position: relative;
+        }
+        
+        /* Move translation section to bottom */
+        .translation-section {
+            height: 230px;  /* Increased height for larger images */
+            background-color: #f3f4f6;
+            padding: 16px;
+            border-top: 1px solid #e5e7eb;
+            overflow-y: auto;
+        }
+        
+        /* Modify sign display for horizontal scrolling */
+        #signs-display {
+            display: flex;
+            flex-wrap: nowrap;  /* Don't wrap to ensure horizontal scrolling */
+            overflow-x: auto;
+            padding-bottom: 12px;  /* Space for scrollbar */
+        }
+        
+        .controls-bar {
+            padding: 16px;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .speaker-info {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 100;
+        }
+        
+        /* Word container styling - without word labels */
+        .word-container {
+            flex: 0 0 auto;  /* Don't grow, don't shrink, use auto basis */
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 8px;
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #f9fafb;
+        }
+        
+        /* Signs container - for grouping images within a word */
+        .signs-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        /* Sign image styling - made larger */
+        .sign-image {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            margin: 2px;
+        }
+        
+        /* Split screen layout for mobile */
+        @media (max-width: 768px) {
+            .translation-section {
+                height: 280px;  /* More space on mobile */
+            }
+        }
+        
+        /* Tabs for the translation section - removed spoken text tab */
+        .tabs {
+            display: none; /* Hidden since we only have one tab now */
+        }
+        
+        .tab-content {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-call-container">
+        <div class="main-content">
+            <div class="video-section">
+                <div id="video-container" class="w-full h-full bg-gray-900"></div>
+                <div id="speaker-info" class="speaker-info hidden"></div>
+            </div>
+            
+            <!-- Translation section moved to bottom -->
+            <div class="translation-section">
+                <!-- Tabs removed since we only need sign language now -->
+                
+                <!-- Sign language display -->
+                <div id="signs-tab" class="tab-content active">
+                    <div id="signs-display" class="flex overflow-x-auto py-2"></div>
+                </div>
+                
+                <!-- Spoken text tab removed -->
+                
+                <!-- Status bar -->
+                <div class="mt-4 p-2 rounded text-sm">
+                    <p id="status" class="text-gray-600">Status: Waiting to start translation</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls-bar">
+            <button id="toggleTranslation" class="px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 text-lg font-semibold">
+                Start Translation
+            </button>
+            <button onclick="testMicrophone()" class="px-6 py-3 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-lg font-semibold">
+                Test Microphone
+            </button>
+            <button onclick="debugInterface()" class="px-6 py-3 bg-pink-500 text-white rounded-md hover:bg-pink-600 text-lg font-semibold">
+                Fix Interface
+            </button>
+            <button id="leaveCall" class="px-6 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 text-lg font-semibold">
+                Leave Call
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let callFrame;
+        let recognition;
+        let currentSpeaker = null;
+        
+        // Tab switching functionality - removed since we only have signs now
+        
+        // Fix interface elements
+        function debugInterface() {
+            // Make sure the translation section is visible
+            document.querySelector('.translation-section').style.display = 'block';
+            document.querySelector('.translation-section').style.height = '230px';
+            
+            // Make sure the signs display is visible
+            document.getElementById('signs-display').style.display = 'flex';
+            
+            // Show a test message (we still track text internally)
+            // document.getElementById('spoken-text').textContent = "Interface fixed! Start translation to begin.";
+            displaySignsForWordsNoLabels("test message");
+            
+            // Show status
+            document.getElementById('status').textContent = "Interface fixed. Ready to translate.";
+            document.getElementById('status').style.backgroundColor = '#ecfdf5';
+            document.getElementById('status').style.padding = '8px';
+            document.getElementById('status').style.borderRadius = '4px';
+            
+            alert("Interface has been fixed. You can now start translation!");
+        }
+        
+        // Test microphone function
+        function testMicrophone() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Your browser does not support microphone access');
+                return;
+            }
+
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    alert('Microphone is working! You can now try speech recognition.');
+                    stream.getTracks().forEach(track => track.stop());
+                })
+                .catch(function(err) {
+                    alert('Error accessing microphone: ' + err.message);
+                });
+        }
+        
+        // Function to display signs grouped by word but without word labels
+        function displaySignsForWordsNoLabels(text) {
+            const signsDisplay = document.getElementById('signs-display');
+            signsDisplay.innerHTML = '';
+            
+            console.log('Text received for words:', text);
+            
+            // Split the text into words
+            const words = text.trim().split(/\s+/);
+            console.log('Words extracted:', words);
+            
+            if (words.length === 0 || (words.length === 1 && words[0] === '')) {
+                console.log('No words found in text');
+                signsDisplay.textContent = 'No words to display';
+                return;
+            }
+            
+            // For each word, create a container (without word label)
+            words.forEach(word => {
+                // Create a container for the word
+                const wordContainer = document.createElement('div');
+                wordContainer.className = 'word-container';
+                
+                // Create a signs container for this word
+                const signsContainer = document.createElement('div');
+                signsContainer.className = 'signs-container';
+                
+                // Extract letters from the word
+                const letters = word.toLowerCase().replace(/[^a-z]/g, '').split('');
+                
+                // Skip empty words
+                if (letters.length === 0) return;
+                
+                // Display signs for each letter in the word
+                letters.forEach(letter => {
+                    // Create and add the image
+                    const img = document.createElement('img');
+                    const imgPath = `/static/signs/${letter}.jpg`;
+                    
+                    img.src = imgPath;
+                    img.alt = `Sign for ${letter}`;
+                    img.className = 'sign-image';
+                    
+                    img.onerror = function() {
+                        console.error(`❌ Failed to load image for letter "${letter}" from path: ${imgPath}`);
+                        // Create a placeholder for missing images
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'sign-image flex items-center justify-center bg-red-100 border border-red-300';
+                        placeholder.textContent = letter.toUpperCase();
+                        this.replaceWith(placeholder);
+                    };
+                    
+                    img.onload = function() {
+                        console.log(`✅ Successfully loaded image for letter "${letter}" from path: ${imgPath}`);
+                    };
+                    
+                    signsContainer.appendChild(img);
+                });
+                
+                // Add the signs container to the word container
+                wordContainer.appendChild(signsContainer);
+                
+                // Add the word container to the main display
+                signsDisplay.appendChild(wordContainer);
+            });
+            
+            // Auto-scroll to the end to show the latest word
+            signsDisplay.scrollLeft = signsDisplay.scrollWidth;
+        }
+        
+        // The old display functions are kept for compatibility but redirected
+        function displaySigns(text) {
+            displaySignsForWordsNoLabels(text);
+        }
+        
+        function displaySignsForWords(text) {
+            displaySignsForWordsNoLabels(text);
+        }
+        
+        // Initialize speech recognition
+        function initializeSpeechRecognition() {
+            if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) {
+                alert("Speech recognition is not supported in your browser. Please use Chrome.");
+                return false;
+            }
+            
+            try {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = function() {
+                    console.log('Speech recognition started');
+                    document.getElementById('status').textContent = 'Status: Listening...';
+                    document.getElementById('status').className = 'text-green-600 font-semibold';
+                };
+                
+                recognition.onend = function() {
+                    console.log('Speech recognition ended');
+                    document.getElementById('status').textContent = 'Status: Stopped';
+                    document.getElementById('status').className = 'text-gray-600';
+                };
+                
+                // This is where we process the speech recognition results
+                recognition.onresult = function(event) {
+                    console.log('Got speech result:', event);
+                    
+                    // Process results - creating a transcript from all results
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+                    
+                    for (let i = 0; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript + ' ';
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    
+                    // Combine transcripts, but don't add double spaces
+                    const fullTranscript = (finalTranscript + interimTranscript).trim();
+                    console.log('Full transcript:', fullTranscript);
+                    
+                    // Get local participant name from Daily.co
+                    const localParticipant = callFrame.participants().local;
+                    const speakerName = localParticipant.user_name || 'Me';
+                    
+                    // We store the text but don't display it in the UI
+                    // document.getElementById('spoken-text').textContent = fullTranscript;
+                    
+                    // Display signs grouped by words but without word labels
+                    displaySignsForWordsNoLabels(fullTranscript);
+                    
+                    // Show speaker info
+                    document.getElementById('speaker-info').textContent = `${speakerName} is speaking`;
+                    document.getElementById('speaker-info').classList.remove('hidden');
+                    
+                    // Send the transcript to other participants
+                    if (callFrame) {
+                        callFrame.sendAppMessage({ 
+                            type: 'transcript', 
+                            text: fullTranscript,
+                            speaker: speakerName
+                        }, '*');
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    document.getElementById('status').textContent = 'Error: ' + event.error;
+                    document.getElementById('status').className = 'text-red-600';
+                };
+                
+                return true;
+            } catch (error) {
+                console.error('Error initializing speech recognition:', error);
+                alert('Error setting up speech recognition: ' + error.message);
+                return false;
+            }
+        }
+        
+        // Toggle translation
+        function toggleTranslation() {
+            if (!recognition && !initializeSpeechRecognition()) {
+                return;
+            }
+            
+            if (document.getElementById('toggleTranslation').textContent === 'Start Translation') {
+                try {
+                    recognition.start();
+                    document.getElementById('toggleTranslation').textContent = 'Stop Translation';
+                    document.getElementById('toggleTranslation').classList.remove('bg-green-500', 'hover:bg-green-600');
+                    document.getElementById('toggleTranslation').classList.add('bg-red-500', 'hover:bg-red-600');
+                } catch (e) {
+                    console.error('Error starting recognition:', e);
+                    alert('Failed to start speech recognition: ' + e.message);
+                }
+            } else {
+                try {
+                    recognition.stop();
+                    document.getElementById('toggleTranslation').textContent = 'Start Translation';
+                    document.getElementById('toggleTranslation').classList.remove('bg-red-500', 'hover:bg-red-600');
+                    document.getElementById('toggleTranslation').classList.add('bg-green-500', 'hover:bg-green-600');
+                } catch (e) {
+                    console.error('Error stopping recognition:', e);
+                }
+            }
+        }
+        
+        // Initialize video call
+        async function initializeCall() {
+            try {
+                // Create the Daily call frame
+                callFrame = DailyIframe.createFrame(
+                    document.getElementById('video-container'),
+                    {
+                        iframeStyle: {
+                            width: '100%',
+                            height: '100%',
+                            border: '0',
+                            borderRadius: '12px'
+                        },
+                        showLeaveButton: false,
+                        showFullscreenButton: true
+                    }
+                );
+                
+                // Listen for messages from other participants
+                callFrame.on('app-message', (event) => {
+                    if (event.data && event.data.type === 'transcript') {
+                        console.log('Received transcript from another participant:', event.data);
+                        
+                        // We still track the text internally but don't display it
+                        // const spokenTextDiv = document.getElementById('spoken-text');
+                        // spokenTextDiv.textContent = event.data.text;
+                        
+                        // Update sign language display with word grouping but no labels
+                        displaySignsForWordsNoLabels(event.data.text);
+                        
+                        // Show who is speaking
+                        const speakerName = event.data.speaker || 'Someone';
+                        
+                        // Make the speaker info very visible
+                        const speakerInfo = document.getElementById('speaker-info');
+                        speakerInfo.textContent = `${speakerName} is speaking`;
+                        speakerInfo.style.backgroundColor = 'rgba(0,0,255,0.5)';
+                        speakerInfo.style.color = 'white';
+                        speakerInfo.style.padding = '10px';
+                        speakerInfo.style.borderRadius = '8px';
+                        speakerInfo.style.fontSize = '16px';
+                        speakerInfo.style.fontWeight = 'bold';
+                        speakerInfo.classList.remove('hidden');
+                        
+                        // Add a notification in the status area too
+                        document.getElementById('status').textContent = `Received message from: ${speakerName}`;
+                        document.getElementById('status').className = 'text-blue-600 font-bold';
+                    }
+                });
+
+                // Join the call
+                await callFrame.join({
+                    url: 'https://translator.daily.co/{{ room_name }}'
+                });
+
+                // Set up translation button
+                document.getElementById('toggleTranslation').addEventListener('click', toggleTranslation);
+
+                // Set up leave call button
+                document.getElementById('leaveCall').addEventListener('click', () => {
+                    if (recognition) {
+                        recognition.stop();
+                    }
+                    callFrame.leave().then(() => {
+                        window.location.href = '/';
+                    });
+                });
+
+            } catch (error) {
+                console.error('Error initializing call:', error);
+                alert('Failed to initialize call: ' + error.message);
+            }
+        }
+
+        window.onload = initializeCall;
+    </script>
+</body>
+</html>

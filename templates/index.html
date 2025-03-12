@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Call App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+            <h1 class="text-2xl font-bold mb-6 text-center">Video Call App</h1>
+            
+            <div class="space-y-4">
+                <button id="createRoom" class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Create New Room
+                </button>
+                
+                <div class="hidden" id="roomInfo">
+                    <p class="mb-2">Room URL:</p>
+                    <input type="text" id="roomUrl" readonly class="w-full p-2 border rounded mb-2">
+                    <button id="copyUrl" class="w-full bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                        Copy URL
+                    </button>
+                    <button id="joinRoom" class="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mt-2">
+                        Join Room
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('createRoom').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/create-room', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('roomUrl').value = data.room_url;
+                    document.getElementById('roomInfo').classList.remove('hidden');
+                    
+                    // Store room info for join button
+                    document.getElementById('joinRoom').setAttribute('data-room', data.room_name);
+                } else {
+                    alert('Failed to create room: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error creating room: ' + error);
+            }
+        });
+
+        document.getElementById('copyUrl').addEventListener('click', () => {
+            const roomUrl = document.getElementById('roomUrl');
+            roomUrl.select();
+            document.execCommand('copy');
+            alert('URL copied to clipboard!');
+        });
+
+        document.getElementById('joinRoom').addEventListener('click', () => {
+            const roomName = document.getElementById('joinRoom').getAttribute('data-room');
+            window.location.href = `/join/${roomName}`;
+        });
+    </script>
+</body>
+</html>
