@@ -1,14 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Video Room</title>
+    <title>Video Room - SignConnect</title>
+    <meta charset="UTF-8">
+    <script crossorigin src="https://unpkg.com/@daily-co/daily-js" defer></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
     <style>
         body, html {
             height: 100vh;
             margin: 0;
             padding: 0;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(120deg, #4f46e5 0%, #7c3aed 100%);
         }
         
         .video-call-container {
@@ -28,21 +35,35 @@
             position: relative;
         }
         
-        /* Move translation section to bottom */
         .translation-section {
-            height: 230px;  /* Increased height for larger images */
-            background-color: #f3f4f6;
+            height: 180px;
+            background-color: #f9fafb;
             padding: 16px;
             border-top: 1px solid #e5e7eb;
             overflow-y: auto;
         }
         
-        /* Modify sign display for horizontal scrolling */
         #signs-display {
             display: flex;
-            flex-wrap: nowrap;  /* Don't wrap to ensure horizontal scrolling */
+            flex-wrap: nowrap;
             overflow-x: auto;
-            padding-bottom: 12px;  /* Space for scrollbar */
+            padding-bottom: 12px;
+            scrollbar-width: thin;
+            scrollbar-color: #4f46e5 #f3f4f6;
+        }
+        
+        #signs-display::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        #signs-display::-webkit-scrollbar-track {
+            background: #f3f4f6;
+            border-radius: 4px;
+        }
+        
+        #signs-display::-webkit-scrollbar-thumb {
+            background-color: #4f46e5;
+            border-radius: 4px;
         }
         
         .controls-bar {
@@ -50,7 +71,7 @@
             background-color: white;
             display: flex;
             justify-content: center;
-            gap: 12px;
+            gap: 16px;
             border-top: 1px solid #e5e7eb;
         }
         
@@ -58,18 +79,18 @@
             position: absolute;
             bottom: 16px;
             left: 16px;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(79, 70, 229, 0.8);
             color: white;
             padding: 8px 16px;
             border-radius: 8px;
             font-size: 16px;
             font-weight: bold;
             z-index: 100;
+            backdrop-filter: blur(4px);
         }
         
-        /* Word container styling - without word labels */
         .word-container {
-            flex: 0 0 auto;  /* Don't grow, don't shrink, use auto basis */
+            flex: 0 0 auto;
             display: inline-flex;
             flex-direction: column;
             align-items: center;
@@ -77,40 +98,67 @@
             padding: 8px;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
-            background-color: #f9fafb;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
         }
         
-        /* Signs container - for grouping images within a word */
+        .word-container:hover {
+            transform: translateY(-2px);
+        }
+        
         .signs-container {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
         }
         
-        /* Sign image styling - made larger */
         .sign-image {
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             object-fit: contain;
             border: 1px solid #e5e7eb;
             border-radius: 4px;
             margin: 2px;
+            background-color: white;
         }
         
-        /* Split screen layout for mobile */
+        .btn-primary {
+            background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+            transition: all 0.3s ease;
+            color: white;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+            transition: all 0.3s ease;
+            color: white;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
+        }
+        
         @media (max-width: 768px) {
             .translation-section {
-                height: 280px;  /* More space on mobile */
+                height: 230px;
             }
-        }
-        
-        /* Tabs for the translation section - removed spoken text tab */
-        .tabs {
-            display: none; /* Hidden since we only have one tab now */
-        }
-        
-        .tab-content {
-            display: block;
+            
+            .controls-bar {
+                flex-wrap: wrap;
+            }
         }
     </style>
 </head>
@@ -122,36 +170,37 @@
                 <div id="speaker-info" class="speaker-info hidden"></div>
             </div>
             
-            <!-- Translation section moved to bottom -->
             <div class="translation-section">
-                <!-- Tabs removed since we only need sign language now -->
-                
-                <!-- Sign language display -->
-                <div id="signs-tab" class="tab-content active">
-                    <div id="signs-display" class="flex overflow-x-auto py-2"></div>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Sign Language Translation</h3>
+                    <div id="status" class="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                        Waiting to start translation
+                    </div>
                 </div>
                 
-                <!-- Spoken text tab removed -->
-                
-                <!-- Status bar -->
-                <div class="mt-4 p-2 rounded text-sm">
-                    <p id="status" class="text-gray-600">Status: Waiting to start translation</p>
+                <div id="signs-tab" class="tab-content active">
+                    <div id="signs-display" class="flex overflow-x-auto py-2"></div>
                 </div>
             </div>
         </div>
         
         <div class="controls-bar">
-            <button id="toggleTranslation" class="px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 text-lg font-semibold">
-                Start Translation
+            <button id="toggleTranslation" class="btn-primary flex items-center justify-center">
+                <i class="fas fa-language mr-2"></i> Start Translation
             </button>
-            <button onclick="testMicrophone()" class="px-6 py-3 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-lg font-semibold">
+            
+            <!-- Test microphone and fix interface buttons are hidden -->
+            <!-- 
+            <button onclick="testMicrophone()" class="hidden">
                 Test Microphone
             </button>
-            <button onclick="debugInterface()" class="px-6 py-3 bg-pink-500 text-white rounded-md hover:bg-pink-600 text-lg font-semibold">
+            <button onclick="debugInterface()" class="hidden">
                 Fix Interface
             </button>
-            <button id="leaveCall" class="px-6 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 text-lg font-semibold">
-                Leave Call
+            -->
+            
+            <button id="leaveCall" class="btn-danger flex items-center justify-center">
+                <i class="fas fa-phone-slash mr-2"></i> Leave Call
             </button>
         </div>
     </div>
@@ -161,31 +210,17 @@
         let recognition;
         let currentSpeaker = null;
         
-        // Tab switching functionality - removed since we only have signs now
-        
-        // Fix interface elements
+        // Fix interface elements - hidden but kept for compatibility
         function debugInterface() {
-            // Make sure the translation section is visible
             document.querySelector('.translation-section').style.display = 'block';
-            document.querySelector('.translation-section').style.height = '230px';
-            
-            // Make sure the signs display is visible
+            document.querySelector('.translation-section').style.height = '180px';
             document.getElementById('signs-display').style.display = 'flex';
-            
-            // Show a test message (we still track text internally)
-            // document.getElementById('spoken-text').textContent = "Interface fixed! Start translation to begin.";
             displaySignsForWordsNoLabels("test message");
-            
-            // Show status
-            document.getElementById('status').textContent = "Interface fixed. Ready to translate.";
-            document.getElementById('status').style.backgroundColor = '#ecfdf5';
-            document.getElementById('status').style.padding = '8px';
-            document.getElementById('status').style.borderRadius = '4px';
-            
-            alert("Interface has been fixed. You can now start translation!");
+            document.getElementById('status').textContent = "Ready to translate";
+            document.getElementById('status').classList.add('bg-green-50', 'text-green-700');
         }
         
-        // Test microphone function
+        // Test microphone function - hidden but kept for compatibility
         function testMicrophone() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 alert('Your browser does not support microphone access');
@@ -246,16 +281,16 @@
                     img.className = 'sign-image';
                     
                     img.onerror = function() {
-                        console.error(`❌ Failed to load image for letter "${letter}" from path: ${imgPath}`);
+                        console.error(`Failed to load image for letter "${letter}" from path: ${imgPath}`);
                         // Create a placeholder for missing images
                         const placeholder = document.createElement('div');
-                        placeholder.className = 'sign-image flex items-center justify-center bg-red-100 border border-red-300';
+                        placeholder.className = 'sign-image flex items-center justify-center bg-gray-100 border border-gray-300';
                         placeholder.textContent = letter.toUpperCase();
                         this.replaceWith(placeholder);
                     };
                     
                     img.onload = function() {
-                        console.log(`✅ Successfully loaded image for letter "${letter}" from path: ${imgPath}`);
+                        console.log(`Successfully loaded image for letter "${letter}" from path: ${imgPath}`);
                     };
                     
                     signsContainer.appendChild(img);
@@ -296,14 +331,14 @@
                 
                 recognition.onstart = function() {
                     console.log('Speech recognition started');
-                    document.getElementById('status').textContent = 'Status: Listening...';
-                    document.getElementById('status').className = 'text-green-600 font-semibold';
+                    document.getElementById('status').textContent = 'Listening...';
+                    document.getElementById('status').className = 'text-sm text-green-700 bg-green-50 px-3 py-1 rounded-full';
                 };
                 
                 recognition.onend = function() {
                     console.log('Speech recognition ended');
-                    document.getElementById('status').textContent = 'Status: Stopped';
-                    document.getElementById('status').className = 'text-gray-600';
+                    document.getElementById('status').textContent = 'Stopped';
+                    document.getElementById('status').className = 'text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full';
                 };
                 
                 // This is where we process the speech recognition results
@@ -330,9 +365,6 @@
                     const localParticipant = callFrame.participants().local;
                     const speakerName = localParticipant.user_name || 'Me';
                     
-                    // We store the text but don't display it in the UI
-                    // document.getElementById('spoken-text').textContent = fullTranscript;
-                    
                     // Display signs grouped by words but without word labels
                     displaySignsForWordsNoLabels(fullTranscript);
                     
@@ -353,7 +385,7 @@
                 recognition.onerror = function(event) {
                     console.error('Speech recognition error:', event.error);
                     document.getElementById('status').textContent = 'Error: ' + event.error;
-                    document.getElementById('status').className = 'text-red-600';
+                    document.getElementById('status').className = 'text-sm text-red-700 bg-red-50 px-3 py-1 rounded-full';
                 };
                 
                 return true;
@@ -370,12 +402,12 @@
                 return;
             }
             
-            if (document.getElementById('toggleTranslation').textContent === 'Start Translation') {
+            if (document.getElementById('toggleTranslation').textContent.includes('Start')) {
                 try {
                     recognition.start();
-                    document.getElementById('toggleTranslation').textContent = 'Stop Translation';
-                    document.getElementById('toggleTranslation').classList.remove('bg-green-500', 'hover:bg-green-600');
-                    document.getElementById('toggleTranslation').classList.add('bg-red-500', 'hover:bg-red-600');
+                    document.getElementById('toggleTranslation').innerHTML = '<i class="fas fa-stop-circle mr-2"></i> Stop Translation';
+                    document.getElementById('toggleTranslation').classList.remove('btn-primary');
+                    document.getElementById('toggleTranslation').classList.add('btn-danger');
                 } catch (e) {
                     console.error('Error starting recognition:', e);
                     alert('Failed to start speech recognition: ' + e.message);
@@ -383,9 +415,9 @@
             } else {
                 try {
                     recognition.stop();
-                    document.getElementById('toggleTranslation').textContent = 'Start Translation';
-                    document.getElementById('toggleTranslation').classList.remove('bg-red-500', 'hover:bg-red-600');
-                    document.getElementById('toggleTranslation').classList.add('bg-green-500', 'hover:bg-green-600');
+                    document.getElementById('toggleTranslation').innerHTML = '<i class="fas fa-language mr-2"></i> Start Translation';
+                    document.getElementById('toggleTranslation').classList.remove('btn-danger');
+                    document.getElementById('toggleTranslation').classList.add('btn-primary');
                 } catch (e) {
                     console.error('Error stopping recognition:', e);
                 }
@@ -415,10 +447,6 @@
                     if (event.data && event.data.type === 'transcript') {
                         console.log('Received transcript from another participant:', event.data);
                         
-                        // We still track the text internally but don't display it
-                        // const spokenTextDiv = document.getElementById('spoken-text');
-                        // spokenTextDiv.textContent = event.data.text;
-                        
                         // Update sign language display with word grouping but no labels
                         displaySignsForWordsNoLabels(event.data.text);
                         
@@ -428,17 +456,11 @@
                         // Make the speaker info very visible
                         const speakerInfo = document.getElementById('speaker-info');
                         speakerInfo.textContent = `${speakerName} is speaking`;
-                        speakerInfo.style.backgroundColor = 'rgba(0,0,255,0.5)';
-                        speakerInfo.style.color = 'white';
-                        speakerInfo.style.padding = '10px';
-                        speakerInfo.style.borderRadius = '8px';
-                        speakerInfo.style.fontSize = '16px';
-                        speakerInfo.style.fontWeight = 'bold';
                         speakerInfo.classList.remove('hidden');
                         
                         // Add a notification in the status area too
-                        document.getElementById('status').textContent = `Received message from: ${speakerName}`;
-                        document.getElementById('status').className = 'text-blue-600 font-bold';
+                        document.getElementById('status').textContent = `Receiving from: ${speakerName}`;
+                        document.getElementById('status').className = 'text-sm text-blue-700 bg-blue-50 px-3 py-1 rounded-full';
                     }
                 });
 
