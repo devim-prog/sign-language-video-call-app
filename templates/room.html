@@ -1,21 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Video Room - SignConnect</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Room</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="/static/js/vendor/daily.js" defer></script>
+    <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         body, html {
             height: 100vh;
             margin: 0;
             padding: 0;
-        }
-        
-        .gradient-bg {
-            background: linear-gradient(120deg, #4f46e5 0%, #7c3aed 100%);
         }
         
         .video-call-container {
@@ -35,35 +29,21 @@
             position: relative;
         }
         
+        /* Move translation section to bottom */
         .translation-section {
-            height: 180px;
-            background-color: #f9fafb;
+            height: 230px;  /* Increased height for larger images */
+            background-color: #f3f4f6;
             padding: 16px;
             border-top: 1px solid #e5e7eb;
             overflow-y: auto;
         }
         
+        /* Modify sign display for horizontal scrolling */
         #signs-display {
             display: flex;
-            flex-wrap: nowrap;
+            flex-wrap: nowrap;  /* Don't wrap to ensure horizontal scrolling */
             overflow-x: auto;
-            padding-bottom: 12px;
-            scrollbar-width: thin;
-            scrollbar-color: #4f46e5 #f3f4f6;
-        }
-        
-        #signs-display::-webkit-scrollbar {
-            height: 8px;
-        }
-        
-        #signs-display::-webkit-scrollbar-track {
-            background: #f3f4f6;
-            border-radius: 4px;
-        }
-        
-        #signs-display::-webkit-scrollbar-thumb {
-            background-color: #4f46e5;
-            border-radius: 4px;
+            padding-bottom: 12px;  /* Space for scrollbar */
         }
         
         .controls-bar {
@@ -71,7 +51,7 @@
             background-color: white;
             display: flex;
             justify-content: center;
-            gap: 16px;
+            gap: 12px;
             border-top: 1px solid #e5e7eb;
         }
         
@@ -79,18 +59,18 @@
             position: absolute;
             bottom: 16px;
             left: 16px;
-            background-color: rgba(79, 70, 229, 0.8);
+            background-color: rgba(0,0,0,0.5);
             color: white;
             padding: 8px 16px;
             border-radius: 8px;
             font-size: 16px;
             font-weight: bold;
             z-index: 100;
-            backdrop-filter: blur(4px);
         }
         
+        /* Word container styling - without word labels */
         .word-container {
-            flex: 0 0 auto;
+            flex: 0 0 auto;  /* Don't grow, don't shrink, use auto basis */
             display: inline-flex;
             flex-direction: column;
             align-items: center;
@@ -98,67 +78,63 @@
             padding: 8px;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s;
+            background-color: #f9fafb;
         }
         
-        .word-container:hover {
-            transform: translateY(-2px);
-        }
-        
+        /* Signs container - for grouping images within a word */
         .signs-container {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
         }
         
+        /* Sign image styling - made larger */
         .sign-image {
-            width: 70px;
-            height: 70px;
+            width: 80px;
+            height: 80px;
             object-fit: contain;
             border: 1px solid #e5e7eb;
             border-radius: 4px;
             margin: 2px;
-            background-color: white;
         }
         
-        .btn-primary {
-            background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
-            transition: all 0.3s ease;
-            color: white;
-            font-weight: 500;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);
-        }
-        
-        .btn-danger {
-            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
-            transition: all 0.3s ease;
-            color: white;
-            font-weight: 500;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-        }
-        
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
-        }
-        
+        /* Split screen layout for mobile */
         @media (max-width: 768px) {
             .translation-section {
-                height: 230px;
+                height: 280px;  /* More space on mobile */
             }
-            
-            .controls-bar {
-                flex-wrap: wrap;
-            }
+        }
+        
+        /* Tabs for the translation section - removed spoken text tab */
+        .tabs {
+            display: none; /* Hidden since we only have one tab now */
+        }
+        
+        .tab-content {
+            display: block;
+        }
+        
+        /* Hand sign recognition video */
+        #webcam-container {
+            position: absolute;
+            right: 16px;
+            bottom: 16px;
+            width: 220px;
+            height: 165px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #374151;
+            z-index: 50;
+        }
+        
+        #my-webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #canvas {
+            display: none;
         }
     </style>
 </head>
@@ -168,39 +144,43 @@
             <div class="video-section">
                 <div id="video-container" class="w-full h-full bg-gray-900"></div>
                 <div id="speaker-info" class="speaker-info hidden"></div>
+                
+                <!-- Add webcam container for hand sign detection -->
+                <div id="webcam-container">
+                    <video id="my-webcam" autoplay playsinline></video>
+                    <canvas id="canvas"></canvas>
+                </div>
             </div>
             
+            <!-- Translation section moved to bottom -->
             <div class="translation-section">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Sign Language Translation</h3>
-                    <div id="status" class="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                        Waiting to start translation
-                    </div>
-                </div>
-                
+                <!-- Sign language display -->
                 <div id="signs-tab" class="tab-content active">
                     <div id="signs-display" class="flex overflow-x-auto py-2"></div>
+                </div>
+                
+                <!-- Status bar -->
+                <div class="mt-4 p-2 rounded text-sm">
+                    <p id="status" class="text-gray-600">Status: Waiting to start translation</p>
                 </div>
             </div>
         </div>
         
         <div class="controls-bar">
-            <button id="toggleTranslation" class="btn-primary flex items-center justify-center">
-                <i class="fas fa-language mr-2"></i> Start Translation
+            <button id="toggleTranslation" class="px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 text-lg font-semibold">
+                Start Translation
             </button>
-            
-            <!-- Test microphone and fix interface buttons are hidden -->
-            <!-- 
-            <button onclick="testMicrophone()" class="hidden">
+            <button id="toggleHandSign" class="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-lg font-semibold">
+                Start Sign Detection
+            </button>
+            <button onclick="testMicrophone()" class="px-6 py-3 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-lg font-semibold">
                 Test Microphone
             </button>
-            <button onclick="debugInterface()" class="hidden">
+            <button onclick="debugInterface()" class="px-6 py-3 bg-pink-500 text-white rounded-md hover:bg-pink-600 text-lg font-semibold">
                 Fix Interface
             </button>
-            -->
-            
-            <button id="leaveCall" class="btn-danger flex items-center justify-center">
-                <i class="fas fa-phone-slash mr-2"></i> Leave Call
+            <button id="leaveCall" class="px-6 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 text-lg font-semibold">
+                Leave Call
             </button>
         </div>
     </div>
@@ -209,18 +189,184 @@
         let callFrame;
         let recognition;
         let currentSpeaker = null;
+        let socket;
+        let webcamStream = null;
+        let frameInterval = null;
+        let isHandSignActive = false;
+        let detectedSigns = [];
         
-        // Fix interface elements - hidden but kept for compatibility
-        function debugInterface() {
-            document.querySelector('.translation-section').style.display = 'block';
-            document.querySelector('.translation-section').style.height = '180px';
-            document.getElementById('signs-display').style.display = 'flex';
-            displaySignsForWordsNoLabels("test message");
-            document.getElementById('status').textContent = "Ready to translate";
-            document.getElementById('status').classList.add('bg-green-50', 'text-green-700');
+        // Initialize Socket.IO connection
+        function initializeSocket() {
+            // Connect to the server
+            socket = io.connect(window.location.origin);
+            
+            // Socket.IO connection event handlers
+            socket.on('connect', () => {
+                console.log('Connected to server via Socket.IO');
+                document.getElementById('status').textContent = 'Status: Connected to sign recognition server';
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+                document.getElementById('status').textContent = 'Status: Disconnected from sign recognition server';
+            });
+            
+            // Listen for sign predictions from the server
+            socket.on('prediction', (data) => {
+                console.log('Received sign prediction:', data);
+                if (data.sign) {
+                    // Add the detected sign to our collection
+                    detectedSigns.push(data.sign);
+                    
+                    // Display the detected signs as a "sentence"
+                    displayDetectedSigns();
+                    
+                    // Send the detected sign to other participants
+                    if (callFrame) {
+                        callFrame.sendAppMessage({ 
+                            type: 'detected_sign', 
+                            sign: data.sign,
+                            speaker: callFrame.participants().local.user_name || 'Me'
+                        }, '*');
+                    }
+                }
+            });
+            
+            // Listen for transition ready events
+            socket.on('transition_ready', (data) => {
+                console.log('Hand transition detected, ready for next sign');
+            });
         }
         
-        // Test microphone function - hidden but kept for compatibility
+        // Display detected signs in the signs display area
+        function displayDetectedSigns() {
+            const signsText = detectedSigns.join('');
+            displaySignsForWordsNoLabels(signsText);
+            
+            // Show speaker info
+            const localParticipant = callFrame.participants().local;
+            const speakerName = localParticipant.user_name || 'Me';
+            document.getElementById('speaker-info').textContent = `${speakerName} is signing`;
+            document.getElementById('speaker-info').classList.remove('hidden');
+        }
+        
+        // Initialize webcam for hand sign detection
+        async function initializeWebcam() {
+            try {
+                const video = document.getElementById('my-webcam');
+                
+                // Request webcam access with specific constraints for better hand detection
+                const constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        frameRate: { ideal: 30 }
+                    }
+                };
+                
+                webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = webcamStream;
+                
+                return true;
+            } catch (error) {
+                console.error('Error accessing webcam:', error);
+                document.getElementById('status').textContent = 'Error: Could not access webcam';
+                return false;
+            }
+        }
+        
+        // Capture and send frames to the server
+        function startFrameCapture() {
+            const video = document.getElementById('my-webcam');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            
+            // Set canvas dimensions to match the video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // Check if hand is present in frame
+            let handPresent = true;
+            
+            // Capture and send frames at regular intervals
+            frameInterval = setInterval(() => {
+                // Draw the current frame on the canvas
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Convert the canvas content to a base64 encoded image
+                const frameData = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // Send the frame to the server for processing
+                socket.emit('frame', { 
+                    frame: frameData,
+                    hand_present: handPresent
+                });
+                
+            }, 200); // Adjust interval as needed for performance (200ms = 5fps)
+        }
+        
+        // Toggle hand sign detection
+        function toggleHandSign() {
+            if (!isHandSignActive) {
+                // Start hand sign detection
+                initializeWebcam().then(success => {
+                    if (success) {
+                        // Wait for webcam to initialize
+                        setTimeout(() => {
+                            startFrameCapture();
+                            isHandSignActive = true;
+                            document.getElementById('toggleHandSign').textContent = 'Stop Sign Detection';
+                            document.getElementById('toggleHandSign').classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                            document.getElementById('toggleHandSign').classList.add('bg-red-500', 'hover:bg-red-600');
+                            document.getElementById('status').textContent = 'Status: Hand sign detection active';
+                        }, 1000);
+                    }
+                });
+            } else {
+                // Stop hand sign detection
+                if (frameInterval) {
+                    clearInterval(frameInterval);
+                    frameInterval = null;
+                }
+                
+                if (webcamStream) {
+                    webcamStream.getTracks().forEach(track => track.stop());
+                    webcamStream = null;
+                }
+                
+                isHandSignActive = false;
+                document.getElementById('toggleHandSign').textContent = 'Start Sign Detection';
+                document.getElementById('toggleHandSign').classList.remove('bg-red-500', 'hover:bg-red-600');
+                document.getElementById('toggleHandSign').classList.add('bg-blue-500', 'hover:bg-blue-600');
+                document.getElementById('status').textContent = 'Status: Hand sign detection stopped';
+                
+                // Reset transition state on the server
+                socket.emit('reset_transition');
+            }
+        }
+        
+        // Fix interface elements
+        function debugInterface() {
+            // Make sure the translation section is visible
+            document.querySelector('.translation-section').style.display = 'block';
+            document.querySelector('.translation-section').style.height = '230px';
+            
+            // Make sure the signs display is visible
+            document.getElementById('signs-display').style.display = 'flex';
+            
+            // Show a test message (we still track text internally)
+            displaySignsForWordsNoLabels("test message");
+            
+            // Show status
+            document.getElementById('status').textContent = "Interface fixed. Ready to translate.";
+            document.getElementById('status').style.backgroundColor = '#ecfdf5';
+            document.getElementById('status').style.padding = '8px';
+            document.getElementById('status').style.borderRadius = '4px';
+            
+            alert("Interface has been fixed. You can now start translation!");
+        }
+        
+        // Test microphone function
         function testMicrophone() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 alert('Your browser does not support microphone access');
@@ -265,7 +411,7 @@
                 signsContainer.className = 'signs-container';
                 
                 // Extract letters from the word
-                const letters = word.toLowerCase().replace(/[^a-z]/g, '').split('');
+                const letters = word.toLowerCase().replace(/[^a-z0-9]/g, '').split('');
                 
                 // Skip empty words
                 if (letters.length === 0) return;
@@ -281,16 +427,16 @@
                     img.className = 'sign-image';
                     
                     img.onerror = function() {
-                        console.error(`Failed to load image for letter "${letter}" from path: ${imgPath}`);
+                        console.error(`❌ Failed to load image for letter "${letter}" from path: ${imgPath}`);
                         // Create a placeholder for missing images
                         const placeholder = document.createElement('div');
-                        placeholder.className = 'sign-image flex items-center justify-center bg-gray-100 border border-gray-300';
+                        placeholder.className = 'sign-image flex items-center justify-center bg-red-100 border border-red-300';
                         placeholder.textContent = letter.toUpperCase();
                         this.replaceWith(placeholder);
                     };
                     
                     img.onload = function() {
-                        console.log(`Successfully loaded image for letter "${letter}" from path: ${imgPath}`);
+                        console.log(`✅ Successfully loaded image for letter "${letter}" from path: ${imgPath}`);
                     };
                     
                     signsContainer.appendChild(img);
@@ -331,14 +477,14 @@
                 
                 recognition.onstart = function() {
                     console.log('Speech recognition started');
-                    document.getElementById('status').textContent = 'Listening...';
-                    document.getElementById('status').className = 'text-sm text-green-700 bg-green-50 px-3 py-1 rounded-full';
+                    document.getElementById('status').textContent = 'Status: Listening...';
+                    document.getElementById('status').className = 'text-green-600 font-semibold';
                 };
                 
                 recognition.onend = function() {
                     console.log('Speech recognition ended');
-                    document.getElementById('status').textContent = 'Stopped';
-                    document.getElementById('status').className = 'text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full';
+                    document.getElementById('status').textContent = 'Status: Stopped';
+                    document.getElementById('status').className = 'text-gray-600';
                 };
                 
                 // This is where we process the speech recognition results
@@ -385,7 +531,7 @@
                 recognition.onerror = function(event) {
                     console.error('Speech recognition error:', event.error);
                     document.getElementById('status').textContent = 'Error: ' + event.error;
-                    document.getElementById('status').className = 'text-sm text-red-700 bg-red-50 px-3 py-1 rounded-full';
+                    document.getElementById('status').className = 'text-red-600';
                 };
                 
                 return true;
@@ -402,12 +548,12 @@
                 return;
             }
             
-            if (document.getElementById('toggleTranslation').textContent.includes('Start')) {
+            if (document.getElementById('toggleTranslation').textContent === 'Start Translation') {
                 try {
                     recognition.start();
-                    document.getElementById('toggleTranslation').innerHTML = '<i class="fas fa-stop-circle mr-2"></i> Stop Translation';
-                    document.getElementById('toggleTranslation').classList.remove('btn-primary');
-                    document.getElementById('toggleTranslation').classList.add('btn-danger');
+                    document.getElementById('toggleTranslation').textContent = 'Stop Translation';
+                    document.getElementById('toggleTranslation').classList.remove('bg-green-500', 'hover:bg-green-600');
+                    document.getElementById('toggleTranslation').classList.add('bg-red-500', 'hover:bg-red-600');
                 } catch (e) {
                     console.error('Error starting recognition:', e);
                     alert('Failed to start speech recognition: ' + e.message);
@@ -415,9 +561,9 @@
             } else {
                 try {
                     recognition.stop();
-                    document.getElementById('toggleTranslation').innerHTML = '<i class="fas fa-language mr-2"></i> Start Translation';
-                    document.getElementById('toggleTranslation').classList.remove('btn-danger');
-                    document.getElementById('toggleTranslation').classList.add('btn-primary');
+                    document.getElementById('toggleTranslation').textContent = 'Start Translation';
+                    document.getElementById('toggleTranslation').classList.remove('bg-red-500', 'hover:bg-red-600');
+                    document.getElementById('toggleTranslation').classList.add('bg-green-500', 'hover:bg-green-600');
                 } catch (e) {
                     console.error('Error stopping recognition:', e);
                 }
@@ -456,11 +602,42 @@
                         // Make the speaker info very visible
                         const speakerInfo = document.getElementById('speaker-info');
                         speakerInfo.textContent = `${speakerName} is speaking`;
+                        speakerInfo.style.backgroundColor = 'rgba(0,0,255,0.5)';
+                        speakerInfo.style.color = 'white';
+                        speakerInfo.style.padding = '10px';
+                        speakerInfo.style.borderRadius = '8px';
+                        speakerInfo.style.fontSize = '16px';
+                        speakerInfo.style.fontWeight = 'bold';
                         speakerInfo.classList.remove('hidden');
                         
                         // Add a notification in the status area too
-                        document.getElementById('status').textContent = `Receiving from: ${speakerName}`;
-                        document.getElementById('status').className = 'text-sm text-blue-700 bg-blue-50 px-3 py-1 rounded-full';
+                        document.getElementById('status').textContent = `Received message from: ${speakerName}`;
+                        document.getElementById('status').className = 'text-blue-600 font-bold';
+                    }
+                    else if (event.data && event.data.type === 'detected_sign') {
+                        console.log('Received detected sign from another participant:', event.data);
+                        
+                        // Show who is signing
+                        const speakerName = event.data.speaker || 'Someone';
+                        
+                        // Add the sign to our display
+                        detectedSigns.push(event.data.sign);
+                        displayDetectedSigns();
+                        
+                        // Make the speaker info very visible
+                        const speakerInfo = document.getElementById('speaker-info');
+                        speakerInfo.textContent = `${speakerName} is signing`;
+                        speakerInfo.style.backgroundColor = 'rgba(0,128,0,0.5)';
+                        speakerInfo.style.color = 'white';
+                        speakerInfo.style.padding = '10px';
+                        speakerInfo.style.borderRadius = '8px';
+                        speakerInfo.style.fontSize = '16px';
+                        speakerInfo.style.fontWeight = 'bold';
+                        speakerInfo.classList.remove('hidden');
+                        
+                        // Add a notification in the status area too
+                        document.getElementById('status').textContent = `Received sign from: ${speakerName}`;
+                        document.getElementById('status').className = 'text-green-600 font-bold';
                     }
                 });
 
@@ -469,14 +646,31 @@
                     url: 'https://translator.daily.co/{{ room_name }}'
                 });
 
+                // Initialize Socket.IO connection
+                initializeSocket();
+
                 // Set up translation button
                 document.getElementById('toggleTranslation').addEventListener('click', toggleTranslation);
+                
+                // Set up hand sign detection button
+                document.getElementById('toggleHandSign').addEventListener('click', toggleHandSign);
 
                 // Set up leave call button
                 document.getElementById('leaveCall').addEventListener('click', () => {
                     if (recognition) {
                         recognition.stop();
                     }
+                    
+                    // Stop hand sign detection if active
+                    if (isHandSignActive) {
+                        toggleHandSign();
+                    }
+                    
+                    // Disconnect from Socket.IO
+                    if (socket) {
+                        socket.disconnect();
+                    }
+                    
                     callFrame.leave().then(() => {
                         window.location.href = '/';
                     });
