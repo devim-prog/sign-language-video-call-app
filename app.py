@@ -73,10 +73,64 @@ mp_hands = mp.solutions.hands
 alphabet = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 alphabet += list(string.ascii_uppercase)
 
-# IMPORTANT: Load model EXACTLY as visual.py does
-print("🚀 Loading model...")
+# IMPORTANT: Download and load model
+print("🚀 Checking for model...")
+model_path = "model.h5"
+
+# Function to download model from Google Drive
+def download_file_from_google_drive(file_id, destination):
+    URL = "https://drive.google.com/uc?export=download"
+    
+    session = requests.Session()
+    response = session.get(URL, params={'id': file_id, 'confirm': 't'}, stream=True)
+    
+    # Get the total file size
+    total_size = int(response.headers.get('content-length', 0))
+    block_size = 32 * 1024  # 32 KB
+    progress_bar_length = 30
+    
+    # Write the file
+    print(f"Downloading model ({total_size / (1024 * 1024):.1f} MB)...")
+    
+    downloaded = 0
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(block_size):
+            if chunk:  # filter out keep-alive chunks
+                f.write(chunk)
+                downloaded += len(chunk)
+                
+                # Print progress
+                progress = int(progress_bar_length * downloaded / total_size)
+                progress_str = "█" * progress + "░" * (progress_bar_length - progress)
+                percent = downloaded / total_size * 100
+                print(f"\r[{progress_str}] {percent:.1f}% ({downloaded / (1024 * 1024):.1f}/{total_size / (1024 * 1024):.1f} MB)", end='')
+    
+    print("\nModel download complete!")
+    return True
+
+# Check if we need to download the model
+model = None
+if not os.path.exists(model_path):
+    print("Model not found locally, downloading from Google Drive...")
+    try:
+        # Extract the file ID from your Google Drive link
+        # Your link: https://drive.google.com/file/d/1p7UMA3e6nM1eUJIcL6oIoTupxQbzyViX/view?usp=sharing
+        file_id = "1p7UMA3e6nM1eUJIcL6oIoTupxQbzyViX"
+        
+        # Download the file
+        success = download_file_from_google_drive(file_id, model_path)
+        if success:
+            print("✓ Model downloaded successfully!")
+        else:
+            print("⚠ Failed to download model.")
+    except Exception as e:
+        print(f"⚠ Error downloading model: {e}")
+else:
+    print("✓ Model already exists locally!")
+
+# Try to load the model
 try:
-    model = keras.models.load_model("model.h5")
+    model = keras.models.load_model(model_path)
     print("✓ Model loaded successfully!")
 except Exception as e:
     print(f"⚠ Error loading model: {e}")
@@ -138,7 +192,7 @@ last_emission_time = 0
 stable_counter = 0
 transition_detected = True  # Start by assuming we're ready for a new sign
 MIN_PREDICTION_CONFIDENCE = 0.7  # Increased confidence threshold
-STABLE_COUNT_REQUIRED = 5  # Number of consistent frames needed
+STABLE_COUNT_REQUIRED = 3  # Changed from 5 to 3 - Number of consistent frames needed
 TRANSITION_PAUSE = 1.5  # Time in seconds to wait after emitting a sign
 
 def process_image(img_data):
